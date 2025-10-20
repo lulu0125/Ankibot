@@ -42,6 +42,9 @@ class AnkibotApp:
         self.last_dir: str | None = None
         self.cancel_event = asyncio.Event()
 
+        # --- View tracking (pour éviter les reconstructions inutiles) ---
+        self._current_view: str = 'home'  # 'home' ou 'settings'
+
         # --- Data ---
         self.source_full_text: str = ""
         self.all_facts: list[Fact] = []
@@ -60,6 +63,15 @@ class AnkibotApp:
         self.api_status: ft.Text | None = None
         self.stats_badge: ft.Text | None = None
         self.content_area: ft.Container = ft.Container(expand=True, animate_opacity=300)
+        
+        # --- New preview controls ---
+        self.facts_stats: ft.Container | None = None
+        self.cards_stats: ft.Container | None = None
+        self.search_facts: ft.TextField | None = None
+        self.search_cards: ft.TextField | None = None
+        self.update_facts_view: callable | None = None
+        self.update_cards_view: callable | None = None
+        self.update_logs_view: callable | None = None
 
         # --- Theme helpers ---
         self._apply_theme = lambda: theme.apply_theme(self)
@@ -87,6 +99,7 @@ class AnkibotApp:
         self._apply_theme()
         self.page.appbar = self._build_appbar()
         # First screen
+        self._current_view = 'home'
         self._fade_to(self._build_home())
         self.page.add(self.content_area)
         self.page.window_maximized = True

@@ -8,27 +8,104 @@ from ankibot.config import save_config
 def attach(app):
     # ----- Navigation / theme -----
     def _go_home():
-        app._fade_to(app._build_home())
+        # Ne reconstruit PAS si on est déjà sur home
+        if not hasattr(app, '_current_view') or app._current_view != 'home':
+            app._current_view = 'home'
+            app._fade_to(app._build_home())
 
     def _toggle_theme(_):
         app.cfg["theme"] = "light" if app._is_dark() else "dark"
         save_config(app.cfg)
+        
+        # Applique le thème SANS reconstruire l'interface
         app._apply_theme()
+        
+        # Met à jour uniquement l'app bar
         app.page.appbar = app._build_appbar()
-        app._fade_to(app._build_home())
+        
+        # Rafraîchit l'affichage des données existantes
+        _refresh_current_view()
+        
+        app.page.update()
 
     def _set_theme(val: str):
         app.cfg["theme"] = val
         save_config(app.cfg)
+        
+        # Applique le thème SANS reconstruire
         app._apply_theme()
         app.page.appbar = app._build_appbar()
+        
+        _refresh_current_view()
+        app.page.update()
 
     def _set_accent(val: str):
         if re.fullmatch(r"#[0-9A-Fa-f]{6}", (val or "").strip() or "#40C4FF"):
             app.cfg["accent"] = val.strip()
             save_config(app.cfg)
+            
+            # Applique le thème SANS reconstruire
             app._apply_theme()
             app.page.appbar = app._build_appbar()
+            
+            _refresh_current_view()
+            app.page.update()
+
+    def _refresh_current_view():
+        """Rafraîchit uniquement les couleurs de la vue actuelle sans reconstruire."""
+        pal = app._palette()
+        
+        # Met à jour les couleurs des éléments existants
+        if hasattr(app, 'facts_stats') and app.facts_stats:
+            app.facts_stats.bgcolor = pal["surface_alt"]
+            if app.facts_stats.content and hasattr(app.facts_stats.content, 'controls'):
+                for ctrl in app.facts_stats.content.controls:
+                    if isinstance(ctrl, ft.Icon):
+                        ctrl.color = pal["muted"]
+                    elif isinstance(ctrl, ft.Text):
+                        ctrl.color = pal["muted"]
+        
+        if hasattr(app, 'cards_stats') and app.cards_stats:
+            app.cards_stats.bgcolor = pal["surface_alt"]
+            if app.cards_stats.content and hasattr(app.cards_stats.content, 'controls'):
+                for ctrl in app.cards_stats.content.controls:
+                    if isinstance(ctrl, ft.Icon):
+                        ctrl.color = pal["muted"]
+                    elif isinstance(ctrl, ft.Text):
+                        ctrl.color = pal["muted"]
+        
+        # Met à jour les champs de recherche
+        if hasattr(app, 'search_facts') and app.search_facts:
+            app.search_facts.bgcolor = pal["surface_alt"]
+            app.search_facts.border_color = pal["border"]
+            app.search_facts.focused_border_color = pal["accent"]
+            if app.search_facts.text_style:
+                app.search_facts.text_style.color = pal["text"]
+        
+        if hasattr(app, 'search_cards') and app.search_cards:
+            app.search_cards.bgcolor = pal["surface_alt"]
+            app.search_cards.border_color = pal["border"]
+            app.search_cards.focused_border_color = pal["accent"]
+            if app.search_cards.text_style:
+                app.search_cards.text_style.color = pal["text"]
+        
+        # Met à jour les tables
+        if hasattr(app, 'fact_preview') and app.fact_preview:
+            app.fact_preview.heading_row_color = pal["surface_alt"]
+            app.fact_preview.border = ft.border.all(1, pal["border"])
+            app.fact_preview.horizontal_lines = ft.BorderSide(1, pal["border"] + "40")
+        
+        if hasattr(app, 'cards_preview') and app.cards_preview:
+            app.cards_preview.heading_row_color = pal["surface_alt"]
+            app.cards_preview.border = ft.border.all(1, pal["border"])
+            app.cards_preview.horizontal_lines = ft.BorderSide(1, pal["border"] + "40")
+        
+        # Met à jour les tabs
+        if hasattr(app, 'preview_tab') and app.preview_tab:
+            app.preview_tab.label_color = pal["accent"]
+            app.preview_tab.indicator_color = pal["accent"]
+            app.preview_tab.divider_color = pal["border"]
+            app.preview_tab.overlay_color = {ft.ControlState.HOVERED: pal["accent"] + "10"}
 
     # ----- Model / density -----
     def _on_model_change(e: ft.ControlEvent):
@@ -92,6 +169,7 @@ def attach(app):
     app._toggle_theme = _toggle_theme
     app._set_theme = _set_theme
     app._set_accent = _set_accent
+    app._refresh_current_view = _refresh_current_view
     app._on_model_change = _on_model_change
     app._update_density = _update_density
     app._on_pick = _on_pick
